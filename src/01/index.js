@@ -7,12 +7,12 @@ const machine = {
   states: {
     inactive: {
       on: {
-        TOGGLE: "active",
+        mousedown: "active",
       },
     },
     active: {
       on: {
-        TOGGLE: "inactive",
+        mouseup: "inactive",
       },
     },
   },
@@ -28,9 +28,14 @@ toggleService.onTransition((state) => {
 
 toggleService.start();
 
-elBox.addEventListener("click", () => {
+elBox.addEventListener("mousedown", (event) => {
   // send a click event
-  toggleService.send({ type: "TOGGLE" });
+  toggleService.send(event); // {type: 'mousedown'}
+});
+
+elBox.addEventListener("mouseup", () => {
+  // send a click event
+  toggleService.send(event); // {type: 'mouseup'}
 });
 
 // toggleService.stop()
