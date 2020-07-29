@@ -1,6 +1,6 @@
-import { createMachine, assign, interpret } from 'xstate';
+import { createMachine, assign, interpret } from "xstate";
 
-const elBox = document.querySelector('#box');
+const elBox = document.querySelector("#box");
 const elBody = document.body;
 
 const assignPoint = assign({
@@ -37,46 +37,60 @@ const resetPosition = assign({
   py: 0,
 });
 
-const dragDropMachine = createMachine({
-  initial: 'idle',
-  context: {
-    x: 0,
-    y: 0,
-    dx: 0,
-    dy: 0,
-    px: 0,
-    py: 0,
-  },
-  states: {
-    idle: {
-      on: {
-        mousedown: {
-          actions: assignPoint,
-          target: 'dragging',
+const dragDropMachine = createMachine(
+  {
+    initial: "idle",
+    context: {
+      x: 0,
+      y: 0,
+      dx: 0,
+      dy: 0,
+      px: 0,
+      py: 0,
+    },
+    states: {
+      idle: {
+        on: {
+          mousedown: {
+            actions: assignPoint,
+            target: "dragging",
+          },
         },
       },
-    },
-    dragging: {
-      on: {
-        mousemove: {
-          actions: assignDelta,
-          internal: false,
+      dragging: {
+        // cancel the dragging after 2 seconds
+        after: {
+          DRAGGING_TIMEOUT: {
+            target: "idle",
+            actions: resetPosition,
+          },
         },
-        mouseup: {
-          actions: [assignPosition],
-          target: 'idle',
+        on: {
+          mousemove: {
+            actions: assignDelta,
+            internal: false,
+          },
+          mouseup: {
+            actions: [assignPosition],
+            target: "idle",
+          },
+          "keyup.escape": {
+            target: "idle",
+            actions: resetPosition,
+          },
         },
-        'keyup.escape': {
-          target: 'idle',
-          actions: resetPosition,
-        },
+        // Transition to 'idle' after 2 seconds
+        // using a delayed transition.
+        // ...
       },
-      // Transition to 'idle' after 2 seconds
-      // using a delayed transition.
-      // ...
     },
   },
-});
+  {
+    delays: {
+      DRAGGING_TIMEOUT: 2000,
+    },
+  }
+);
 
 const service = interpret(dragDropMachine);
 
@@ -84,29 +98,29 @@ service.onTransition((state) => {
   elBox.dataset.state = state.value;
 
   if (state.changed) {
-    elBox.style.setProperty('--dx', state.context.dx);
-    elBox.style.setProperty('--dy', state.context.dy);
-    elBox.style.setProperty('--x', state.context.x);
-    elBox.style.setProperty('--y', state.context.y);
+    elBox.style.setProperty("--dx", state.context.dx);
+    elBox.style.setProperty("--dy", state.context.dy);
+    elBox.style.setProperty("--x", state.context.x);
+    elBox.style.setProperty("--y", state.context.y);
   }
 });
 
 service.start();
 
-elBox.addEventListener('mousedown', (event) => {
+elBox.addEventListener("mousedown", (event) => {
   service.send(event);
 });
 
-elBody.addEventListener('mousemove', (event) => {
+elBody.addEventListener("mousemove", (event) => {
   service.send(event);
 });
 
-elBody.addEventListener('mouseup', (event) => {
+elBody.addEventListener("mouseup", (event) => {
   service.send(event);
 });
 
-elBody.addEventListener('keyup', (e) => {
-  if (e.key === 'Escape') {
-    service.send('keyup.escape');
+elBody.addEventListener("keyup", (e) => {
+  if (e.key === "Escape") {
+    service.send("keyup.escape");
   }
 });
