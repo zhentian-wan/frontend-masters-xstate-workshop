@@ -1,6 +1,6 @@
-import { createMachine, assign, interpret } from 'xstate';
+import { createMachine, assign, interpret } from "xstate";
 
-const elBox = document.querySelector('#box');
+const elBox = document.querySelector("#box");
 const elBody = document.body;
 
 const assignPoint = assign({
@@ -37,8 +37,14 @@ const resetPosition = assign({
   py: 0,
 });
 
+const assignOnlyX = assign({
+  dx: (context, event) => {
+    return event.clientX - context.px;
+  },
+});
+
 const dragDropMachine = createMachine({
-  initial: 'idle',
+  initial: "idle",
   context: {
     x: 0,
     y: 0,
@@ -52,11 +58,31 @@ const dragDropMachine = createMachine({
       on: {
         mousedown: {
           actions: assignPoint,
-          target: 'dragging',
+          target: "dragging", // dragging.locked
         },
       },
     },
     dragging: {
+      initial: "normal",
+      states: {
+        normal: {
+          on: {
+            "keydown.shift": "locked",
+          },
+        },
+        locked: {
+          on: {
+            // overwrite mousemove actions to move only
+            // on x-axis
+            mousemove: {
+              actions: assignOnlyX,
+            },
+            "keyup.shift": {
+              target: "normal",
+            },
+          },
+        },
+      },
       // Add hierarchical (nested) states here.
       // We should have a state for normal operation
       // that transitions to a "locked" x-axis behavior
@@ -69,10 +95,10 @@ const dragDropMachine = createMachine({
         },
         mouseup: {
           actions: [assignPosition],
-          target: 'idle',
+          target: "idle",
         },
-        'keyup.escape': {
-          target: 'idle',
+        "keyup.escape": {
+          target: "idle",
           actions: resetPosition,
         },
       },
@@ -83,36 +109,43 @@ const dragDropMachine = createMachine({
 const service = interpret(dragDropMachine);
 
 service.onTransition((state) => {
-  elBox.dataset.state = state.toStrings().join(' ');
+  elBox.dataset.state = state.toStrings().join(" ");
 
   if (state.changed) {
-    elBox.style.setProperty('--dx', state.context.dx);
-    elBox.style.setProperty('--dy', state.context.dy);
-    elBox.style.setProperty('--x', state.context.x);
-    elBox.style.setProperty('--y', state.context.y);
+    elBox.style.setProperty("--dx", state.context.dx);
+    elBox.style.setProperty("--dy", state.context.dy);
+    elBox.style.setProperty("--x", state.context.x);
+    elBox.style.setProperty("--y", state.context.y);
   }
 });
 
 service.start();
 
-elBox.addEventListener('mousedown', (event) => {
+elBox.addEventListener("mousedown", (event) => {
   service.send(event);
 });
 
-elBody.addEventListener('mousemove', (event) => {
+elBody.addEventListener("mousemove", (event) => {
   service.send(event);
 });
 
-elBody.addEventListener('mouseup', (event) => {
+elBody.addEventListener("mouseup", (event) => {
   service.send(event);
 });
 
-elBody.addEventListener('keyup', (e) => {
-  if (e.key === 'Escape') {
-    service.send('keyup.escape');
+elBody.addEventListener("keyup", (e) => {
+  if (e.key === "Escape") {
+    service.send("keyup.escape");
+  }
+
+  if (e.key === "Shift") {
+    service.send("keyup.shift");
   }
 });
 
-// Add event listeners for keyup and keydown on the body
-// to listen for the 'Shift' key.
-// ...
+elBody.addEventListener("keydown", (e) => {
+  if (e.key === "Shift") {
+    console.log("shift is down");
+    service.send("keydown.shift");
+  }
+});
